@@ -24,6 +24,9 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 @app.task(bind=True)
 def divide(self, x, y):
+    # Testing and debugging using rdb
+    # from celery.contrib import rdb
+    # rdb.set_trace()
     import time
     time.sleep(5)
     if not self.request.id:
