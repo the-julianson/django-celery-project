@@ -1,16 +1,18 @@
 import json
+import logging
 import random
 
 import requests
 from celery.result import AsyncResult
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 
 from polls.forms import YourForm
-from polls.tasks import sample_task
+from polls.tasks import sample_task, task_process_notification
 
 
-# helpers
+logger = logging.getLogger(__name__)
 
 def api_call(email):
     # used for testing a failed api call
@@ -56,4 +58,22 @@ def task_status(request):
             }
         return JsonResponse(response)
 
-# Create your views here.
+@csrf_exempt
+def webhook_test(request):
+    if not random.choice([0, 1]):
+        # mimic an error
+        raise Exception()
+
+    # blocking process
+    requests.post('https://httpbin.org/delay/5')
+    return HttpResponse('pong')
+
+
+@csrf_exempt
+def webhook_test_async(request):
+    """
+    Use celery worker to handle the notification
+    """
+    task = task_process_notification.delay()
+    logger.info(task.id)
+    return HttpResponse('pong')
