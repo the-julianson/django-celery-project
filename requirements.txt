@@ -8,3 +8,6 @@ ipython==8.15.0
 ruff==0.3.4
 watchfiles==1.0.4
 requests==2.32.3
+daphne==4.1.2
+channels==4.2.0
+channels-redis==4.2.1
