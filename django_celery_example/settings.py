@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 
+from kombu import Queue
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'polls',
     'channels',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -145,3 +148,43 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SHELL_PLUS = "ipython"
+
+# CELERY BEAT SETTINGS
+CELERY_BEAT_SCHEDULE = {
+    # Will handled by django-celery-beat admin interface
+    # 'task-clear-session': {
+    #     'task': 'task_clear_session',
+    #     "schedule": 5.0,  # five seconds
+    # },
+}
+
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+# Force all queues to be explicitly listed in `CELERY_TASK_QUEUES` to help prevent typos
+CELERY_TASK_CREATE_MISSING_QUEUES = False
+
+CELERY_TASK_QUEUES = (
+    # need to define default queue here or exception would be raised
+    Queue('default'),
+
+    Queue('high_priority'),
+    Queue('low_priority'),
+)
+
+# manual task routing
+
+# CELERY_TASK_ROUTES = {
+#     'django_celery_example.celery.*': {
+#         'queue': 'high_priority',
+#     },
+# }
+
+# dynamic task routing
+
+def route_task(name, args, kwargs, options, task=None, **kw):
+    if ':' in name:
+        queue, _ = name.split(':')
+        return {'queue': queue}
+    return {'queue': 'default'}
+
+CELERY_TASK_ROUTES = (route_task, )

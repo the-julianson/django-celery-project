@@ -1,15 +1,21 @@
 import json
 import logging
 import random
+import time
+
+from functools import partial
 
 import requests
 from celery.result import AsyncResult
 from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.models import User
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
-
+from django.db import transaction
+from string import ascii_lowercase
 from polls.forms import YourForm
-from polls.tasks import sample_task, task_process_notification
+from polls.tasks import sample_task, task_process_notification, task_send_welcome_email
+
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +64,11 @@ def task_status(request):
             }
         return JsonResponse(response)
 
+def random_username():
+    username = ''.join([random.choice(ascii_lowercase) for i in range(5)])
+    return username
+
+
 @csrf_exempt
 def webhook_test(request):
     if not random.choice([0, 1]):
@@ -93,3 +104,13 @@ def subscribe_ws(request):
 
     form = YourForm()
     return render(request, 'form_ws.html', {'form': form})
+
+@transaction.atomic
+def transaction_celery(request):
+    username = random_username()
+    user = User.objects.create_user(username, 'lennon@thebeatles.com', 'johnpassword')
+    logger.info(f'create user {user.pk}')
+    transaction.on_commit(partial(task_send_welcome_email.delay, user.pk))
+
+    time.sleep(1)
+    return HttpResponse('test')
